@@ -4,11 +4,14 @@ const Showtimes = require('../models/showtimesModel');
 const Screens = require('../models/screensModel');
 const Theatres = require('../models/theatresModel');
 const { json } = require('body-parser');
+const { Redis } = require('ioredis');
 const router = express.Router();
 
 router.get('/movie-analytics', async (request, response) => {
     try {
-
+        const cache = new Redis();
+        const cacheValue = await cache.get("movie-analytics");
+        if(cacheValue) return response.json(JSON.parse(cacheValue));
         const cur_movies = await Movies.find({});
         const movies = [];
         for(let i=0;i<cur_movies.length;i++)
@@ -37,6 +40,8 @@ router.get('/movie-analytics', async (request, response) => {
             movies[i]["bookedseats"] = bookedseats;
             movies[i]["totalseats"] = totalseats;
         }
+        await cache.set("movie-analytics", JSON.stringify(movies));
+        await cache.expire("movie-analytics", 30);
         return response.status(200).json(movies);
 
     } catch (error) {
@@ -47,7 +52,9 @@ router.get('/movie-analytics', async (request, response) => {
 
 router.get('/location-analytics', async (request, response) => {
     try {
-        
+        const cache = new Redis();
+        const cacheValue = await cache.get("location-analytics");
+        if(cacheValue) return response.json(JSON.parse(cacheValue));
         const dist_locations = await Theatres.distinct('city');
         const locations = [];
         for(let i=0;i<dist_locations.length;i++)
@@ -96,6 +103,8 @@ router.get('/location-analytics', async (request, response) => {
             locations[i].bookedseats = bookedseats;
             locations[i].totalseats = totalseats;
         }
+        await cache.set("location-analytics", JSON.stringify(locations));
+        await cache.expire("location-analytics", 30);
         return response.status(200).json(locations);
         
     } catch (error) {
